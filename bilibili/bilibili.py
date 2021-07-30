@@ -156,7 +156,7 @@ class Bilibili():
 
             # Combine video and audio to mp4 file.
             cmd = 'ffmpeg -i %s -i %s -y -c copy %s' % (video_path, audio_path, output_path)
-            ret = subprocess.call(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+            ret = subprocess.call(cmd, shell=True)
             if ret != 0:
                 print(' ERROR WHEN COMBINE, WITH CODE %d' % ret)
 
