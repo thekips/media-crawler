@@ -63,6 +63,7 @@ class Karaoke(object):
                     f.write(song.content)
 
                 file = music_tag.load_file(path_to_file)
+                file['title'] = name[:name.find('-')]
                 file['artist'] = self.artist
                 file['year'] = date
                 file.save()
