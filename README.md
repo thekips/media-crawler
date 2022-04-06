@@ -37,7 +37,7 @@
   提示：打开浏览器的开发者工具，在网络面板里查找与目标网站通信时的包记录，多找几个，可能在`Request Headers`中找到这些字段；填写字段的时候，填至冒号的一个空格后即可，不需要加双引号，如：
 
   ```yaml
-  cookie: you_cookie_str_without_q
+  cookie: you_cookie_str_without_quotation_mark
   ```
 
 - 执行程序，根据提示输入想要爬取的账号ID或URL即可。
