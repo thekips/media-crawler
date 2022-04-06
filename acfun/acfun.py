@@ -58,7 +58,8 @@ class Acfun:
             if os.path.exists(path_to_file):
                 print("Video [%s] has been download" % videoId)
                 return
-            cmd = 'ffmpeg -i "%s" -codec copy %s' % (m3u8, path_to_file)
+            cmd = 'ffmpeg -loglevel warning -i "%s" -codec copy %s' % (m3u8, path_to_file)
+            print('Downloading...')
             os.system(cmd)
         else:
             print(response.status_code)
