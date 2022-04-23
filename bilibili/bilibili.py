@@ -188,8 +188,18 @@ class Bilibili():
 if __name__ == '__main__':
     bilibili = Bilibili()
 
-    start_time = time.time()
-    bilibili.scrawlMedia()
-    end_time = time.time()
+    while True:
+        option = input('[1] Download one video.\n[2] Download all video from a user.\n')
 
-    print("All finished in %ds!" % (end_time-start_time))
+        if option == '1':
+            bvid = input('Please input video BV number:')
+            bilibili.dlVideo(bvid)
+            break
+        elif option == '2':
+            start_time = time.time()
+            bilibili.scrawlMedia()
+            end_time = time.time()
+            print("All finished in %ds!" % (end_time-start_time))
+            break
+        else:
+            print('Please input a number...')
