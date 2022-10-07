@@ -91,6 +91,7 @@ class Bilibili():
         res = json.loads(res.text)
 
         video_info = jsonpath(res, expr='$.data.dash.video.[*]')
+        print(video_info[0]['width'])
         video_url = video_info[0]['baseUrl']    # Get best quality.
         audio_info = jsonpath(res, expr='$.data.dash.audio.[*]')
         audio_url = audio_info[0]['baseUrl']    # Get best quality.
@@ -194,6 +195,7 @@ if __name__ == '__main__':
         if option == '1':
             bvid = input('Please input video BV number:')
             bilibili.dlVideo(bvid)
+            os.system('pause')
             break
         elif option == '2':
             start_time = time.time()
@@ -203,3 +205,4 @@ if __name__ == '__main__':
             break
         else:
             print('Please input a number...')
+    

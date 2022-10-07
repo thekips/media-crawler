@@ -1,11 +1,13 @@
+import json
 import requests
 import yaml
 import os
 import time
 from jsonpath import jsonpath
 
-ID_URL = 'https://www.instagram.com/%s/'
-MEDIA_URL = 'https://www.instagram.com/graphql/query/'
+ID_URL = 'https://i.instagram.com/api/v1/users/web_profile_info/'
+QUERY_URL = 'https://i.instagram.com/api/v1/feed/user/%s/username/?count=12'
+MEDIA_URL = 'https://i.instagram.com/api/v1/feed/user/%s/'
 
 def mkDir(path):
     if(not os.path.exists(path)):
@@ -20,55 +22,85 @@ class Instgram:
         with open('config.yaml', 'r', encoding='utf-8') as f:
             self.headers = yaml.safe_load(f)
         self.rest_id = self.getRestID(screen_id)
+        self.screen_id = screen_id
         self.cursor = ''
         self.pic_path = 'data/' + screen_id + '/img/'
         self.video_path = 'data/' + screen_id + '/video/'
 
     def getRestID(self, screen_id):
-        params = (
-            ('__a', '1'),
-        )
+        headers = {
+        'x-ig-app-id': '936619743392459',
+        }
+
+        params = {
+            'username': screen_id,
+        }
+
         try:
-            response = requests.get(ID_URL % screen_id, headers=self.headers, params=params)
+            response = requests.get(ID_URL, params=params, headers=headers)
             if response.status_code == 200:
                 response = response.json()
-                return response['graphql']['user']['id']
+                return response['data']['user']['id']
             else:
                 print('request error, the response error code is: ', response.status_code)
         except Exception as e:
             print(e)
             return None
 
-    def get_media_urls(self):
-        if self.cursor == '':
-            params = (
-                ('query_hash', '32b14723a678bd4628d70c1f877b94c9'),
-                ('variables', '{"id":"%s","first":12}' % self.rest_id),
-            )
-        else:
-            params = (
-                ('query_hash', '32b14723a678bd4628d70c1f877b94c9'),
-                ('variables', '{"id":"%s","first":12,"after":"%s"}' % (self.rest_id, self.cursor)),
-            )
-            
+    def get_media_urls(self, cursor):
+        headers = {
+            'x-ig-app-id': '936619743392459',
+        }
+
+
         try:
-            response = requests.get(MEDIA_URL, headers=self.headers, params=params)
+            if cursor == '':
+                response = requests.get(QUERY_URL % self.screen_id, headers=headers)
+            else:
+                params = {
+                    'count': '12',
+                    'max_id': cursor,
+                }
+                response = requests.get(MEDIA_URL % self.rest_id, params=params, headers=headers)
+
             if(response.status_code == 200):
-                return response.json()
+                response = json.dumps(response.json(), sort_keys=True)
+                return json.loads(response)
             else:
                 print('request error in get_media(), the response error code is: ', response.status_code)
+
         except Exception as e:
             print(e)
+    
+    def getMax(self, candidates):
+        max_urls = []
+        for candidate in candidates:
+            max_height = 0
+            max_url = ''
+
+            for pic in candidate:
+                if pic['height'] > max_height:
+                    max_height = pic['height']
+                    max_url = pic['url']
+            max_urls.append(max_url)
+
+        return max_urls
 
     def scrawlMedia(self):
         mkDir(self.pic_path)
         mkDir(self.video_path)
 
         while self.cursor != 'END':
-            response = self.get_media_urls()
-            pic_urls = jsonpath(response, expr='$.data.user.edge_owner_to_timeline_media.edges.[*].node.edge_sidecar_to_children.edges.[*].node.display_url')
-            video_urls = jsonpath(response, expr='$.data.user.edge_owner_to_timeline_media.edges.[*].video_url')
+            response = self.get_media_urls(self.cursor)
+            pic_candidates = jsonpath(response, expr='$.items.[*].image_versions2.candidates')
+            video_candidates = jsonpath(response, expr='$.items.[*].video_versions')
 
+            #get max resolution
+            if pic_candidates:
+                pic_urls = self.getMax(pic_candidates)
+            if video_candidates:
+                video_urls = self.getMax(video_candidates )
+            
             #download media
             if pic_urls:
                 for url in pic_urls: self.dlPic(url)
@@ -76,10 +108,12 @@ class Instgram:
                 for url in video_urls: self.dlVideo(url)
 
             #upgrade cursor
-            page_info = response['data']['user']['edge_owner_to_timeline_media']['page_info']
-            self.cursor = page_info['end_cursor'] if page_info['has_next_page'] else 'END'
+            self.cursor = response['next_max_id'] if response['more_available'] == True else 'END'
 
     def dlPic(self, url):
+        if url == '':
+            return
+
         try:
             pic_name = url[url.rfind('/') + 1 : url.rfind('?')]
             path_to_file = self.pic_path + '/' + pic_name
