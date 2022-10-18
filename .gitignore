@@ -1,5 +1,5 @@
 # file to ignore
-# *.yaml
+*.yaml
 
 # folder to ignore
 */data
