@@ -43,7 +43,7 @@ class Bilibili():
         params = (
             ('mid', self.mid),
         )
-        res = requests.get(INFO_URL, params=params)
+        res = requests.get(INFO_URL, params=params, headers=self.headers)
         res = json.loads(res.text)
 
         return res['data']['name']
@@ -54,7 +54,7 @@ class Bilibili():
             ('pn', self.index),
             ('order', 'pubdate'),
         )
-        res = requests.get(MEDIA_URL, params=params)
+        res = requests.get(MEDIA_URL, params=params, headers=self.headers)
         res = json.loads(res.text)
 
         # Get video(bvid) and music id.
@@ -172,12 +172,15 @@ class Bilibili():
         if path == '':
             path = self.mid + '_' + self.__getName() + '/'
         enablePath(path)
+        print(path)
 
         self.index = 0
         while True:
             self.index += 1
             bvinfo, tidinfo = self.__getMediaID()
-            if not bvinfo and not tidinfo: break
+            if not bvinfo and not tidinfo: 
+                print('No Video Info, EXIT.')
+                break
 
             if bvinfo:
                 for bvid, bvtime in bvinfo:
