@@ -28,16 +28,12 @@ class Instgram:
         self.video_path = 'data/' + screen_id + '/video/'
 
     def getRestID(self, screen_id):
-        headers = {
-        'x-ig-app-id': '936619743392459',
-        }
-
         params = {
             'username': screen_id,
         }
 
         try:
-            response = requests.get(ID_URL, params=params, headers=headers)
+            response = requests.get(ID_URL, params=params, headers=self.headers)
             if response.status_code == 200:
                 response = response.json()
                 return response['data']['user']['id']
@@ -48,20 +44,15 @@ class Instgram:
             return None
 
     def get_media_urls(self, cursor):
-        headers = {
-            'x-ig-app-id': '936619743392459',
-        }
-
-
         try:
             if cursor == '':
-                response = requests.get(QUERY_URL % self.screen_id, headers=headers)
+                response = requests.get(QUERY_URL % self.screen_id, headers=self.headers)
             else:
                 params = {
                     'count': '12',
                     'max_id': cursor,
                 }
-                response = requests.get(MEDIA_URL % self.rest_id, params=params, headers=headers)
+                response = requests.get(MEDIA_URL % self.rest_id, params=params, headers=self.headers)
 
             if(response.status_code == 200):
                 response = json.dumps(response.json(), sort_keys=True)
@@ -92,20 +83,28 @@ class Instgram:
 
         while self.cursor != 'END':
             response = self.get_media_urls(self.cursor)
+            if not response:
+                print('No Response, EXIT.')
+                break
+
             pic_candidates = jsonpath(response, expr='$.items.[*].image_versions2.candidates')
             video_candidates = jsonpath(response, expr='$.items.[*].video_versions')
 
             #get max resolution
             if pic_candidates:
                 pic_urls = self.getMax(pic_candidates)
+
+                #download media
+                if pic_urls:
+                    for url in pic_urls: self.dlPic(url)
+
+            #get max resolution
             if video_candidates:
                 video_urls = self.getMax(video_candidates )
             
-            #download media
-            if pic_urls:
-                for url in pic_urls: self.dlPic(url)
-            if video_urls:
-                for url in video_urls: self.dlVideo(url)
+                #download media
+                if video_urls:
+                    for url in video_urls: self.dlVideo(url)
 
             #upgrade cursor
             self.cursor = response['next_max_id'] if response['more_available'] == True else 'END'
