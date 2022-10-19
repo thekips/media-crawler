@@ -4,6 +4,11 @@ import requests
 import re
 import music_tag
 
+# referer can be any site to get through verification.
+headers = {
+    'referer': 'https://kg.qq.com/index-pc.html',
+}
+
 def mkdir(path):
     if not os.path.exists(path):
         os.makedirs(path)
@@ -18,18 +23,24 @@ class Karaoke(object):
     
     def get_songs(self, uid: str) -> list:
         url = 'https://node.kg.qq.com/cgi/fcgi-bin/kg_ugc_get_homepage?type=get_uinfo&start=%d&num=8&share_uid=%s'
-        res = requests.get(url % (1, uid)).text
+        res = requests.get(url % (1, uid), headers=headers)
+        if res.status_code != 200:
+            print(res.status_code)
+            return
+
+        res = res.text
         self.artist = re.search(r'(?<="nickname": ").*?(?=",)', res).group()
         self.path = 'data/' + self.artist
         num = re.search(r'(?<="ugc_total_count":).+?(?=,)', res).group()
         total = (int(num)+ 7) // 8
 
         for start in range(1, total + 1):
-            res = requests.get(url % (start, uid)).text
+            res = requests.get(url % (start, uid), headers=headers).text
             self.songs_id += re.findall(r'(?<="shareid": ").*?(?=",)', res)
             self.songs_name += re.findall(r'(?<="title": ").*?(?=",)', res)
             self.songs_date += re.findall(r'(?<="time": ).*?(?=,)', res)
 
+        print(self.songs_name)
         if '' in self.songs_name:
             index = []
             for i in range(len(self.songs_name)):
