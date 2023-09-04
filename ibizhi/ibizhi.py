@@ -60,14 +60,19 @@ def dl_pic(url, tag):
 resp = requests.get(URL_CLIENT, params=get_params(1e16))
 info = decode_b64_aes(resp.text)
 total_pages = info['totalPages']
+print(f'Total Pages Num: {total_pages}')
 
 
 # Start crawler.
 for page in range(total_pages):
+    print(f'=====Downloading Page {page + 1}=====')
     resp = requests.get(URL_CLIENT, params=get_params(page))
     wallpaper_list = decode_b64_aes(resp.text)
 
+    page_num = len(wallpaper_list['data'])
+    print(f'Total Pages Image Num: {page_num}')
+
     for wallpaper_info in wallpaper_list['data']:
-        tag = wallpaper_info['tag']
+        tag = wallpaper_info['tag'].encode('latin1').decode('utf-8')
         img_url = wallpaper_info['originalUrl']
         dl_pic(img_url, tag)
