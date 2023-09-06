@@ -46,7 +46,11 @@ def write_pic(content, tag, img_path):
 
     # 添加关键字标记到 EXIF 数据中
     img = Image(img_path, encoding='gbk')
-    img.modify_iptc({'Iptc.Application2.Keywords': tag})
+    img_type = img.get_mime_type()
+    if img_type == 'image/jpeg':
+        img.modify_iptc({'Iptc.Application2.Keywords': tag})
+    elif img_type == 'image/png':
+        img.modify_xmp({'Xmp.dc.subject': tag})
     img.close()
 
 def dl_pic(img_url, tag, c_time):
