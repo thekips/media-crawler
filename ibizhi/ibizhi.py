@@ -1,10 +1,13 @@
 import base64
-import js2py
+import json
 import os
 import re
-import requests
-import json
+import time
 from concurrent.futures import ThreadPoolExecutor
+
+import js2py
+import requests
+from pyexiv2 import Image
 
 # Init for decode
 URL_CLIENT = 'https://client.ibzhi.com/http/client'
@@ -14,6 +17,7 @@ FUNC = [
     lambda page:'{"page":%s,"size":30,"v":3}' % str(page),
     lambda page, c_id:'{"page":%s,"size":30,"v":3,"classify_ids":"%s"}' % (str(page), c_id),
 ]
+EXIF = {"0th": {}, "Exif": {}, "GPS": {}, "1st": {}, "thumbnail": None}
 
 # Methods.
 def mkDir(path):
@@ -32,27 +36,39 @@ def decode_b64_aes(enc):
     return json.loads(dec)
 
 
-def dl_pic(img_url, tag):
+def write_pic(content, tag, img_path):
+    # 将下载的二进制数据创建为图像
+    with open(img_path, 'wb') as f:
+        f.write(content)
+    
+    tag = re.split(r'[;,\\s]+', tag)
+    tag.append(c_name[c_index])
+
+    # 添加关键字标记到 EXIF 数据中
+    img = Image(img_path, encoding='gbk')
+    img.modify_iptc({'Iptc.Application2.Keywords': tag})
+    img.close()
+
+def dl_pic(img_url, tag, c_time):
     img_name = re.findall(r'(?<=wallpaper/).*', img_url)[0]
-    path = os.path.join(PATH, tag)
+    path = os.path.join(PATH, c_time)
     img_path = os.path.join(path, img_name)
 
-    try:
-        if not os.path.exists(img_path):
-            response = requests.get(img_url)
-
-            if response.status_code == 200:
-                mkDir(path)
-                with open(img_path, 'wb') as f:
-                    f.write(response.content)
-                print(f'Get {img_url} -> {img_path}')
-            else:
-                print(f'Error {img_url} -> {img_path}')
+    if not os.path.exists(img_path):
+        resp = requests.get(img_url)
+        if resp.status_code == 200:
+            mkDir(path)
+            try:
+                print(f'Get {img_url} -> {path}')
+                write_pic(resp.content, tag, img_path)
+            except Exception as e:
+                print(e)
+                print('Try to download the picture again...')
+                dl_pic(img_url, tag, c_time)
         else:
-            print(f'Exist {img_url} -> {img_path}')
-    except:
-        print('Try to download the picture again...')
-        dl_pic(img_url, tag)
+            print(f'Error {img_url} -> {path}')
+    else:
+        print(f'Exist {img_url} -> {path}')
 
 # Request params
 def get_params(page, f_index, c_id=None):
@@ -131,10 +147,17 @@ for page in range(total_pages):
 
     tags = []
     img_urls = []
+    ctimes = []
     for wallpaper_info in wallpaper_list['data']:
         url = wallpaper_info['originalUrl']
         img_urls.append(re.sub(r'\?.*', '', url))
+
         tags.append(wallpaper_info['tag'])
+
+        c_time = time.localtime(wallpaper_info['create_time'] // 1000) 
+        ctimes.append('%d-%02d' % (c_time.tm_year, c_time.tm_mon))
     
     with ThreadPoolExecutor(max_workers=os.cpu_count()) as executor:
-        executor.map(dl_pic, img_urls, tags)
+        executor.map(dl_pic, img_urls, tags, ctimes)
+
+os.system('pause')
